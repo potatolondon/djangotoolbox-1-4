@@ -13,6 +13,8 @@ from django.utils.functional import Promise
 from django.utils.safestring import EscapeString, EscapeUnicode, SafeString, \
     SafeUnicode
 
+from django.utils import timezone
+from django.conf import settings
 from .creation import NonrelDatabaseCreation
 
 
@@ -326,6 +328,13 @@ class NonrelDatabaseOperations(BaseDatabaseOperations):
             value = self._value_for_db_model(value, field,
                                              field_kind, db_type, lookup)
 
+        elif field_kind == 'DateTimeField':
+            if timezone.is_aware(value):
+                if settings.USE_TZ:
+                    value = value.astimezone(timezone.utc).replace(tzinfo=None)
+                else:
+                    raise ValueError("Djangoappengine backend does not support timezone-aware datetimes when USE_TZ is False.")
+
         return value
 
     def _value_from_db(self, value, field, field_kind, db_type):
@@ -361,6 +370,11 @@ class NonrelDatabaseOperations(BaseDatabaseOperations):
         elif field_kind == 'EmbeddedModelField':
             value = self._value_from_db_model(value, field,
                                               field_kind, db_type)
+
+        elif field_kind in ('DateTimeField',):
+
+            if value is not None and settings.USE_TZ and timezone.is_naive(value):
+                value = value.replace(tzinfo=timezone.utc)
 
         return value
 
