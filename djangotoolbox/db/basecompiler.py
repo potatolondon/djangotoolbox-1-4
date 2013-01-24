@@ -379,15 +379,12 @@ class NonrelCompiler(SQLCompiler):
         result = []
         for field in fields:
             value = entity.get(field.column, NOT_PROVIDED)
-            if value is NOT_PROVIDED:
+            if value is NOT_PROVIDED or (not field.null and value is None):
                 value = field.get_default()
             else:
                 value = self.ops.value_from_db(value, field)
                 value = self.query.convert_values(value, field,
                                                   self.connection)
-            if value is None and not field.null:
-                raise IntegrityError("Non-nullable field %s can't be None!" %
-                                     field.name)
             result.append(value)
         return result
 
